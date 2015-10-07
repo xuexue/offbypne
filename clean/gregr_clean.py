@@ -4,7 +4,6 @@
 # PYTHONPATH="$YOUR_CHOICE" python -i THIS_FILE.py
 
 # TODO:
-# - Identify and convert to 'NA' any additional null values.
 # - Transform dates.  Possibly to unixtimes?
 # - How should we encode geographical data?
 # - Simplify high-cardinality categorical variables that only contain a few
@@ -28,6 +27,7 @@ test_t = 'test%s.csv'
 
 #initial_idx = ''
 initial_idx = '0'
+#initial_idx = '1'
 train = train_t % initial_idx
 test = test_t % initial_idx
 
@@ -144,8 +144,18 @@ def clean0():
     for names in [insignificants, redundants]:
         remove_names(train_frame, names)
     apply_transforms(isrc, itgt, train_frame.transforms())
-    import sys
-    sys.exit()
+
+
+def clean1():
+    isrc = '0'
+    itgt = '1'
+    for template in (train_t, test_t):
+        frame = data.summarize(template % isrc, limit=None)
+        frame_merge_nulls(frame)
+        data.apply_transforms(template % isrc, template % itgt,
+                              *frame.transforms())
+        del frame
+
 
 coverage = None
 ratio = 0.01
@@ -208,6 +218,9 @@ def show_duplicates(frame, file_name):
         print pair
 
 #clean0()
+#clean1()
+#import sys
+#sys.exit()
 limit = None
 train_frame = data.summarize(train, limit=limit)
 #intervals = intervalize(train_frame)
