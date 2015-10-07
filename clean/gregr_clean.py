@@ -69,24 +69,53 @@ def apply_transforms(src, tgt, transforms):
     data.apply_transforms(train_t % src, train_t % tgt, *transforms)
     data.apply_transforms(test_t % src, test_t % tgt, *transforms)
 
+null_cats = ['NA', '', '[]']
+null_nums = [-1]  # TODO: confirm that this really is a null
 
-def remove_constants(frame):
-    matches = data.frame_uniques_lteq(frame, 1)
-    for name, _ in matches:
-        del frame[name]
 
-dirty_constants = ['VAR_0008', 'VAR_0009', 'VAR_0010', 'VAR_0011', 'VAR_0012',
-                   'VAR_0018', 'VAR_0019', 'VAR_0020', 'VAR_0021', 'VAR_0022',
-                   'VAR_0023', 'VAR_0024', 'VAR_0025', 'VAR_0026', 'VAR_0027',
-                   'VAR_0028', 'VAR_0029', 'VAR_0030', 'VAR_0031', 'VAR_0032',
-                   'VAR_0038', 'VAR_0039', 'VAR_0040', 'VAR_0041', 'VAR_0042',
-                   'VAR_0043', 'VAR_0044', 'VAR_0196', 'VAR_0197', 'VAR_0199',
-                   'VAR_0202', 'VAR_0203', 'VAR_0215', 'VAR_0216', 'VAR_0221',
-                   'VAR_0222', 'VAR_0223', 'VAR_0229', 'VAR_0239', 'VAR_0188',
-                   'VAR_0189', 'VAR_0190', 'VAR_0246', 'VAR_0394', 'VAR_0438',
-                   'VAR_0446', 'VAR_0527', 'VAR_0528', 'VAR_0530']
-strange_constants = ['VAR_0466']
+def col_merge_nulls(col, tgt='NA'):
+    summary = col.summary
+    for src in null_cats:
+        if src == tgt:
+            continue
+        if src in summary.cats:
+            col.remap(src, tgt, force=True)
+    #was_interval = summary.is_interval
+    #summary.enable_interval()
+    #if set(summary.nums.iterkeys()) == set(null_nums):
+        #for src in null_nums:
+            #col.move(src, tgt, force=True)
+    #if not was_interval:
+        #summary.disable_interval()
+
+
+def frame_merge_nulls(frame, tgt='NA'):
+    for col in frame.cols:
+        col_merge_nulls(col, tgt)
+
+
+def is_constant_without_nulls(col):
+    summary = col.summary
+    keys = set(summary.cats.iterkeys()) | set(summary.nums.iterkeys())
+    return len(keys - set(null_cats)) <= 1
+
+
+def constants_without_nulls(frame):
+    return [name for name, col in zip(frame.names, frame.cols)
+            if is_constant_without_nulls(col)]
+
+
+def duplicate_pair_lhss(frame, file_name):
+    return set(lhs for lhs, rhs in data.duplicates(frame, file_name))
+
+
+def remove_names(frame, names):
+    for name in names:
+        if frame.get(name) is not None:
+            del frame[name]
+
 insignificants = []  # 'VAR_0214', 'VAR_0106', 'VAR_0526', 'VAR_0529']
+# precomputed version
 redundants = ['VAR_0089',  # VAR_0238
               'VAR_0227',  # VAR_0228
               'VAR_0208',  # VAR_0210
@@ -103,24 +132,17 @@ redundants = ['VAR_0089',  # VAR_0238
               ]
 
 
-def remove_names(frame, names):
-    for name in names:
-        del frame[name]
-
-
 def clean0():
     isrc = ''
     itgt = '0'
     train_frame = data.summarize(train_t % isrc, limit=None)
     del train_frame['ID']
-    # remove constant/irrelevant train columns
-    #   won't matter if non-constant in test
-    remove_constants(train_frame)
-    for names in [dirty_constants, strange_constants, insignificants,
-                  redundants]:
+    cwns = constants_without_nulls(train_frame)
+    remove_names(train_frame, cwns)
+    # to avoid recomputing redundants each time, comment the following line
+    redundants = duplicate_pair_lhss(train_frame, train_t % isrc)
+    for names in [insignificants, redundants]:
         remove_names(train_frame, names)
-    # produce cleaned data files; should remove at least these columns:
-    # ['ID', 'VAR_0207', 'VAR_0213', 'VAR_0840', 'VAR_0847', 'VAR_1428']
     apply_transforms(isrc, itgt, train_frame.transforms())
     import sys
     sys.exit()
