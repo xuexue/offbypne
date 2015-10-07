@@ -2,6 +2,21 @@
 # To run THIS_FILE.py, for some directory of $YOUR_CHOICE do the following:
 # git clone git@github.com:gregr/python-misc.git "$YOUR_CHOICE"/gregr_misc
 # PYTHONPATH="$YOUR_CHOICE" python -i THIS_FILE.py
+
+# TODO:
+# - Identify and convert to 'NA' any additional null values.
+# - Transform dates.  Possibly to unixtimes?
+# - How should we encode geographical data?
+# - Simplify high-cardinality categorical variables that only contain a few
+#   significant representatives.  Merge the insignificant values.
+# - There are several variables with only a single significant representative.
+#   Should we throw these away?
+# - There are many variables with extremely high, but not perfect, correlation.
+#   Should anything be done about them?
+# - What to do about high-cardinality ID-like fields?: VAR_0227, VAR_0228
+# - Should we convert all categories to numerals?
+# - How should we perform feature selection?
+
 from gregr_misc import data, seq
 from gregr_misc.logging import config as config_logging
 import logging
